@@ -20,10 +20,10 @@ String rfid_pass_key = "767bc6db";
 String keypad_pass_key = "14116";
 
 /* LED 핀 번호 설정 */
-#define blue_led 0
-#define orange_led 0
-#define green_led 0
-#define red_led 0
+#define blue_led 16 // D0
+#define orange_led 2 // D4
+#define green_led 14 // D5
+#define red_led 12 // D6
 
 /* 서보모터 사용 설정 */
 Servo servo; // 서보모터 객체 선언
@@ -31,8 +31,7 @@ int servo_angle_lock = 90; // 잠글 때의 서보모터 각도 설정
 int servo_angle_open = 180; // 열 때의 서보모터 각도 설정
 #define servo_pin 0 // 서보모터 핀 설정
 
-#define door_pin 0 // 자석 스위치(도어 센서) 핀 번호 지정
-// D5(14), D6(12), D7(13) 중 하나
+#define door_pin 13 // 자석 스위치(도어 센서) 핀 번호 지정 (보드의 D7)
 
 void setup() {
   Serial.begin(115200); while (!Serial); // 시리얼 통신 시작, 통신 시작될 때까지 대기
@@ -98,6 +97,7 @@ void loop() {
       uidString += String(mfrc522.uid.uidByte[i], HEX);
     }
 
+    Serial.print("인식된 RFID 카드의 UID: "); Serial.println(uidString);
     digitalWrite(orange_led, LOW); //주황색 LED 끄기
 
     /* UID가 등록된 UID인지 확인하고 문 열기 또는 무시하기 */
@@ -115,11 +115,10 @@ void loop() {
   /* loop문 끝 */
 }
 
-/* 키패드 입력을 인식하고, 입력된 키를 byte 형태로 반환 */
+/* 키패드에 입력된 키를 byte 형태로 반환 (키패드의 어떠한 키도 누르지 않았으면 0(byte)을 반환) */
 byte readKeypad() {
-  byte key_count;
   byte key_state = 0;
-  for (key_count = 1; key_count <= 16; key_count ++) {
+  for (byte key_count = 1; key_count <= 16; key_count ++) {
     digitalWrite(scl_pin, LOW);
     if (!digitalRead(sdo_pin)) key_state = key_count;
     digitalWrite(scl_pin, HIGH);
@@ -131,12 +130,14 @@ byte readKeypad() {
 void doorOpen() {
   digitalWrite(green_led, HIGH); // 초록색 LED 켜기
   servo.write(servo_angle_open); // 서보모터 잠금 풀기
+  Serial.println("잠금을 해제합니다.");
 
   delay(5000); // 문 닫힘 상태를 인식하기 전에 5초 대기 (인증 통과 후 5초동안 문이 닫혀 있으면 자동으로 잠김)
-
   while (digitalRead(door_pin) == HIGH) { yield(); } // 문 열려 있는 동안 대기 (문 다시 닫힐 떄까지)
+  Serial.print("문이 닫혔습니다. ");
 
   servo.write(servo_angle_lock); // 서보모터 다시 잠그기
   delay(100); // 서보모터 작동 대기
   digitalWrite(green_led, LOW); // 초록색 LED 끄기
+  Serial.println("다시 잠급니다.");
 }
